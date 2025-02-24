@@ -15,7 +15,6 @@ import * as fs from '../../platform/server/fs';
 import * as sqlite from '../../platform/server/sqlite';
 import * as monthUtils from '../../shared/months';
 import { groupById } from '../../shared/util';
-import { CategoryEntity, CategoryGroupEntity } from '../../types/models';
 import { WithRequired } from '../../types/util';
 import {
   schema,
@@ -306,19 +305,17 @@ export function updateWithSchema(table, fields) {
 // Data-specific functions. Ideally this would be split up into
 // different files
 
-// TODO: Fix return type. This should returns a DbCategory[].
 export async function getCategories(
   ids?: Array<DbCategory['id']>,
-): Promise<CategoryEntity[]> {
+): Promise<DbCategory[]> {
   const whereIn = ids ? `c.id IN (${toSqlQueryParameters(ids)}) AND` : '';
   const query = `SELECT c.* FROM categories c WHERE ${whereIn} c.tombstone = 0 ORDER BY c.sort_order, c.id`;
   return ids ? await all(query, [...ids]) : await all(query);
 }
 
-// TODO: Fix return type. This should returns a [DbCategoryGroup, ...DbCategory].
 export async function getCategoriesGrouped(
   ids?: Array<DbCategoryGroup['id']>,
-): Promise<Array<CategoryGroupEntity>> {
+): Promise<Array<DbCategoryGroup & { categories: DbCategory[] }>> {
   const categoryGroupWhereIn = ids
     ? `cg.id IN (${toSqlQueryParameters(ids)}) AND`
     : '';
@@ -349,7 +346,7 @@ export async function getCategoriesGrouped(
 
 export async function insertCategoryGroup(
   group,
-): Promise<CategoryGroupEntity['id']> {
+): Promise<DbCategoryGroup['id']> {
   // Don't allow duplicate group
   const existingGroup = await first<
     Pick<DbCategoryGroup, 'id' | 'name' | 'hidden'>
@@ -372,7 +369,7 @@ export async function insertCategoryGroup(
     ...categoryGroupModel.validate(group),
     sort_order,
   };
-  const id: CategoryGroupEntity['id'] = await insertWithUUID(
+  const id: DbCategoryGroup['id'] = await insertWithUUID(
     'category_groups',
     group,
   );
@@ -409,10 +406,10 @@ export async function deleteCategoryGroup(group, transferId?: string) {
 export async function insertCategory(
   category,
   { atEnd } = { atEnd: undefined },
-): Promise<CategoryEntity['id']> {
+): Promise<DbCategory['id']> {
   let sort_order;
 
-  let id_: CategoryEntity['id'];
+  let id_: DbCategory['id'];
   await batchMessages(async () => {
     // Dont allow duplicated names in groups
     const existingCatInGroup = await first<Pick<DbCategory, 'id'>>(
