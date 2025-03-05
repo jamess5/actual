@@ -161,7 +161,7 @@ function BudgetInner(props: BudgetInnerProps) {
     const cats = await send('get-categories');
     const exists =
       cats.grouped
-        .filter(g => g.id === category.cat_group)[0]
+        .filter(g => g.id === category.group)[0]
         .categories.filter(
           c => c.name.toUpperCase() === category.name.toUpperCase(),
         )
@@ -177,7 +177,7 @@ function BudgetInner(props: BudgetInnerProps) {
       dispatch(
         createCategory({
           name: category.name,
-          groupId: category.cat_group,
+          groupId: category.group,
           isIncome: category.is_income,
           isHidden: category.hidden,
         }),
